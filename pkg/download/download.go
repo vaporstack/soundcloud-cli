@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"time"
+	"strings"
 
 	"github.com/timoknapp/soundcloud-cli/pkg/soundcloud"
 	"github.com/timoknapp/soundcloud-cli/pkg/tag"
@@ -18,13 +18,24 @@ func start(downloadPath, format string, track soundcloud.Track) error {
 		os.Mkdir(downloadPath, os.ModePerm)
 	}
 
-	specialChars, err := regexp.Compile("[^a-zA-Z0-9-\\. ()äöüß,&]+")
-	if err != nil {
-		return err
-	}
-	fileName := specialChars.ReplaceAllString(track.Title+"."+format, "")
+	url := track.PermalinkURL
+
+	chunks := strings.Split(url, "/")
+	l := len(chunks)
+	normalizedTrackName := chunks [l-1]
+	normalizedArtistName := chunks [l-2]
+
+	normalizedTrackName = strings.Replace(normalizedTrackName, "-", "_", -1)
+	normalizedArtistName = strings.Replace(normalizedArtistName, "-", "_", -1)
+
+	fileName := normalizedArtistName + "-" + normalizedTrackName
+
+	artistSubFolder := filepath.Join(downloadPath, normalizedArtistName)
+	os.MkdirAll(artistSubFolder, os.ModePerm)
+
 	var fileToWrite string
-	fileToWrite = downloadPath + string(os.PathSeparator) + fileName
+	fileToWrite = artistSubFolder + string(os.PathSeparator) + fileName + "." + format
+
 	if _, err := os.Stat(fileToWrite); err == nil {
 		return errors.New("soundcloud-cli: track already exists")
 	}
